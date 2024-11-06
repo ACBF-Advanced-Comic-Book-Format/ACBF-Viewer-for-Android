@@ -19,7 +19,7 @@ https://github.com/GeoRW/ACBF
 # along with this program; if not, write to the Free Software
 # -------------------------------------------------------------------------
 
-__version__ = '2.0'
+__version__ = '2.1'
 
 import os
 import kivy
