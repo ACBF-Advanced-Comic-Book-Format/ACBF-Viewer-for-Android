@@ -1,0 +1,7 @@
+Build:
+buildozer android debug deploy run
+
+Debug:
+~/.buildozer/android/platform/android-sdk/platform-tools/adb start-server
+~/.buildozer/android/platform/android-sdk/platform-tools/adb logcat | grep python
+
