@@ -181,7 +181,7 @@ class Library():
         #print(key, title)
 
         data.append((key, elem))
-      data.sort()
+      data.sort(key = lambda x: x[0])
 
       self.tree[:] = [item[-1] for item in data]
       version = xml.SubElement(self.tree, "version")
