@@ -21,6 +21,17 @@ https://github.com/GeoRW/ACBF
 
 import os.path
 import lxml.etree as xml
+from kivy.utils import platform
+
+if platform == 'android':
+  from jnius import autoclass
+  from jnius import cast
+    
+  PythonActivity = autoclass('org.kivy.android.PythonActivity')
+  Uri = autoclass('android.net.Uri')
+  DocumentFile = autoclass('androidx.documentfile.provider.DocumentFile')
+else:
+  print("Not running on Android ...")
 
 try:
   from . import constants
@@ -48,8 +59,10 @@ class History():
       #print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
 
   def load_history(self):
+      print('load_history')
       try:
         self.tree = xml.parse(source = self.hist_file_path)
+        #print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
       except:
         self.create_new_tree()
         f = open(self.hist_file_path, 'w')
@@ -57,6 +70,7 @@ class History():
         f.close()
 
   def save_history(self):
+      print('save_history')
       f = open(self.hist_file_path, 'w')
       #print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
       f.write(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
@@ -110,18 +124,31 @@ class History():
       #print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
 
   def delete_book(self, path):
+      print('Delete book:', path)
       for book in self.tree.findall("file"):
+        #print(book.get("path"), path)
         if book.get("path") == str(path):
           book.getparent().remove(book)
       return
 
   def cleanup_history(self):
+    print('cleanup_history')
     deleted = False
+    #print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
     for book in self.tree.findall("file"):
-      if not os.path.exists(book.get("path")):
+      if platform == 'android':
+        uri = Uri.parse(book.get("path"))
+        currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+        documentfile = DocumentFile.fromSingleUri(currentActivity, uri)
+        if not documentfile.exists():
+          #print('Not exists:', book.get("path"))
+          self.delete_book(str(book.get("path")))
+          deleted = True
+      elif not os.path.exists(book.get("path")):
         self.delete_book(str(book.get("path")))
         deleted = True
 
+    print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
     if deleted:
       self.save_history()
 
