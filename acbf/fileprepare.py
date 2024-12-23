@@ -45,6 +45,20 @@ class FilePrepare():
     
     def __init__(self, window, filename, tempdir, prepare_type, *args):
       print("fileprepare")
+      
+      # try to load unrar lib
+      for unrar_lib in ['arm64-v8a', 'armeabi-v7a']:
+        lib_path = os.path.join(App.get_running_app().user_data_dir, 'app', 'unrar', unrar_lib, 'libunrardyn.so')
+        os.environ['UNRAR_LIB_PATH'] = lib_path
+        try:
+          from unrar import rarfile
+          is_rarfile = True
+          break
+        except Exception as inst:
+          is_rarfile = False
+          print('Failed to load library: ' + lib_path)
+          print("Exception: %s" % inst)
+
       self._window = window
       self.filename = str(filename)
       self.tempdir = tempdir
@@ -160,31 +174,11 @@ class FilePrepare():
                 if f == sorted(safe_zip_files)[0]:
                   self.extract_file(z, f, prepare_type)
           
+        elif file_type == 'RAR' and is_rarfile:
+          r = rarfile.RarFile(self.filename)
+          r.extractall(self.tempdir)
         else:
-          unrar_location = None
-          if file_type == 'RAR':
-            print("getting unrar location ...")
-            for root, dirs, files in os.walk(str(App.get_running_app().directory)):
-              for f in files:
-                if f == 'unrar':
-                  unrar_location = os.path.abspath(os.path.join(root, f))
-                  print("Unrar location:", unrar_location)
-                  os.chmod(unrar_location, stat.S_IXUSR)
-          try:
-            print("running patool ...")
-            # check if it fails on ascii/utf-8 conversion hack (unrar can't extract these and will crash whole app)
-            #command = ["/data/data/org.acbf.acbfa/files/unrar/unrar", "v", self.filename]
-            xx = self.filename
-            #unrar_list = str(subprocess.Popen(command, stdout=subprocess.PIPE).stdout.read().decode('utf-8'))
-
-            if unrar_location != None:
-              patoolib.extract_archive(archive=xx, outdir=self.tempdir, program=unrar_location, verbosity=1)
-            else:
-              patoolib.extract_archive(archive=xx, outdir=self.tempdir)
-          except Exception as inst:
-            print("Patool exception:", inst)
-            self.filename = None
-            raise
+          patoolib.extract_archive(archive=self.filename, outdir=self.tempdir)
 
         # rename to safe filenames
         #for root, dirs, files in os.walk(self.tempdir):
