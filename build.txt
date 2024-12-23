@@ -1,5 +1,13 @@
+Setup:
+python3 -menv venv
+source venv/bin/activate
+pip install buildozer
+pip install setuptools
+pip install cython
+
 Build:
-buildozer android debug deploy run
+source venv/bin/activate
+$VIRTUAL_ENV/bin/buildozer android debug deploy run
 
 Debug:
 sudo ~/.buildozer/android/platform/android-sdk/platform-tools/adb kill-server
