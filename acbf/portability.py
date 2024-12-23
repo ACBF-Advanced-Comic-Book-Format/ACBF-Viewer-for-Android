@@ -52,10 +52,10 @@ def get_config_directory():
 
 
 def get_data_directory():
-    """Return the path to the ACBFA data directory. On UNIX, this will
-    be /tmp/acbfa, on Windows it will be
-    C:\Documents and settings\[user]\Application settings\Temp\acbfa.
-    """
+    #Return the path to the ACBFA data directory. On UNIX, this will
+    #be /tmp/acbfa, on Windows it will be
+    #C:\Documents and settings\[user]\Application settings\Temp\acbfa.
+    
 
     return str(os.path.join(tempfile.gettempdir(), 'acbfa'))
 
@@ -65,7 +65,7 @@ def get_fonts_directory():
         if os.getenv('CSIDL_FONTS') != None:
           font_dirs.append(os.getenv('CSIDL_FONTS'))
         else:
-          font_dirs.append('C:\Windows\Fonts')
+          font_dirs.append('C:\\Windows\\Fonts')
         return font_dirs
     elif sys.platform.startswith('linux'):
         if os.path.isfile('/etc/fonts/fonts.conf'):

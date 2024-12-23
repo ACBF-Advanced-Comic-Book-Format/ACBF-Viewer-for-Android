@@ -148,7 +148,7 @@ class History():
         self.delete_book(str(book.get("path")))
         deleted = True
 
-    print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
+    #print(xml.tostring(self.tree, encoding='unicode', pretty_print=True))
     if deleted:
       self.save_history()
 
