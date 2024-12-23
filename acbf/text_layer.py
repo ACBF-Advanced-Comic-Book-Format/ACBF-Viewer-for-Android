@@ -130,8 +130,9 @@ class TextLayer():
             return ImageFont.truetype(self.thought_font, height)
           else:
             return ImageFont.load_default()
+
     def remove_xml_tags(self, in_string):
-        return unescape(re.sub("<[^>]*>", '', in_string))
+        return unescape(re.sub(u"<[^>]*>", '', in_string.replace('\n', ' ')))
 
     def median(self, lst):
         lst = sorted(lst)
@@ -152,6 +153,9 @@ class TextLayer():
             time.sleep(self._window.conf_anim_dur / 2)
 
           polygon = []
+          text = text_area[1]
+          if len(text) == 0:
+            continue
 
           if text_area[3] == 0:
             draw = image_draw
@@ -190,7 +194,7 @@ class TextLayer():
           
           # calculate some default values
           polygon_area = area(polygon)
-          text = text_area[1]
+          
           if '<COMMENTARY>' in text.upper() or text_area[4].upper() == 'COMMENTARY':
             is_commentary = True
           else:
@@ -232,8 +236,8 @@ class TextLayer():
             is_code = False
 
           is_emphasis = is_strong = False
-          words = text.replace('a href', 'a_href').replace(' ', u' ˇ').split(u'ˇ')
-          words_upper = text.replace(' ', u'ˇ').upper().split(u'ˇ')
+          words = text.replace('a href', 'a_href').replace(' ', ' ˇ').split('ˇ')
+          words_upper = text.replace(' ', 'ˇ').upper().split('ˇ')
           area_per_character = polygon_area/len(self.remove_xml_tags(text))
           character_height = int(math.sqrt(area_per_character/2)*2) - 3
 
@@ -252,7 +256,6 @@ class TextLayer():
           while not text_fits:
               while self._window.is_animating:
                 time.sleep(self._window.conf_anim_dur / 2)
-
               text_fits = True
               character_height = character_height - 1
               space_between_lines = character_height + character_height * 0.3
@@ -294,7 +297,7 @@ class TextLayer():
               while drawing_word < len(words):
                 #place first word in line
                 first_word_fits = False
-                tag_split = words[drawing_word].replace('<', u'ˇ<').split(u'ˇ')
+                tag_split = words[drawing_word].replace('<', 'ˇ<').split('ˇ')
                 chunk_size = 0
 
                 for chunk in tag_split:
@@ -355,7 +358,7 @@ class TextLayer():
                       font = c_font_small
                     else:
                       font = c_font
-                  
+
                   if is_emphasis:
                     if use_small_font:
                       font = e_font_small
@@ -384,7 +387,10 @@ class TextLayer():
 
                   current_chunk = self.remove_xml_tags(chunk)
                   if current_chunk != '':
-                    chunk_size = chunk_size + draw.textsize(current_chunk, font=font)[0]
+                    try:
+                      chunk_size = chunk_size + draw.textlength(text=current_chunk, font=font)
+                    except:
+                      chunk_size = chunk_size + draw.textlength(text=current_chunk.encode(encoding='ascii',errors='replace'), font=font)
 
                 text_size = (chunk_size, character_height + 1)
                 
@@ -414,7 +420,7 @@ class TextLayer():
                 #place other words in line that fit
                 other_word_fits = True
                 while other_word_fits and drawing_word < len(words):
-                  tag_split = words[drawing_word].replace('<', u'ˇ<').split(u'ˇ')
+                  tag_split = words[drawing_word].replace('<', 'ˇ<').split('ˇ')
                   chunk_size = 0
 
                   for chunk in tag_split:
@@ -478,7 +484,7 @@ class TextLayer():
                         font = c_font_small
                       else:
                         font = c_font
-                    
+
                     if is_emphasis:
                       if use_small_font:
                         font = e_font_small
@@ -507,19 +513,22 @@ class TextLayer():
 
                     current_chunk = self.remove_xml_tags(chunk)
                     if current_chunk != '':
-                      chunk_size = chunk_size + draw.textsize(current_chunk, font=font)[0]
+                      try:
+                        chunk_size = chunk_size + draw.textlength(text=current_chunk, font=font)
+                      except:
+                        chunk_size = chunk_size + draw.textlength(text=current_chunk.encode(encoding='ascii',errors='replace'), font=font)
 
                   text_size = (chunk_size, character_height + 1)
                   upper_right_corner_fits = point_inside_polygon(current_pointer[0] + text_size[0], current_pointer[1], polygon)
                   lower_right_corner_fits = point_inside_polygon(current_pointer[0] + text_size[0], current_pointer[1] + text_size[1], polygon)
-                  
+
                   if other_word_fits and upper_right_corner_fits and lower_right_corner_fits:
                     diff_ratio = (get_frame_span(polygon)[3] - (current_pointer[1] + text_size[1])) / float(text_size[1])
-                    if drawing_word == len(words) - 1 and diff_ratio > 1.4 and not is_formal and not is_commentary:
-                      #print(words[drawing_word].encode("ascii","ignore"))
-                      #print('word y:', current_pointer[1] + text_size[1], current_pointer[1] + text_size[1]+ text_size[1])
-                      #print('polygon:', get_frame_span(polygon))
-                      #print('diff:', get_frame_span(polygon)[3] - (current_pointer[1] + text_size[1]), diff_ratio)
+                    if drawing_word == len(words) - 1 and diff_ratio > 1.45 and not is_formal and not is_commentary:
+                      #print words[drawing_word].encode("ascii","ignore")
+                      #print 'word y:', current_pointer[1] + text_size[1], current_pointer[1] + text_size[1]+ text_size[1]
+                      #print 'polygon:', get_frame_span(polygon)
+                      #print 'diff:', get_frame_span(polygon)[3] - (current_pointer[1] + text_size[1]), diff_ratio
                       other_word_fits = False
                       last_word_end = (current_pointer[0], current_pointer[1] + text_size[1])
                       lines.append((first_word_start, current_line, last_word_end))
@@ -567,15 +576,15 @@ class TextLayer():
 
           # rotate image back to original rotation after text is drawn
           if text_area[3] != 0:
-            draw_image = draw_image.rotate(text_area[3], Image.BILINEAR, 1)
+            draw_image = draw_image.rotate(text_area[3], Image.Resampling.BILINEAR, 1)
             rotated_image_size = draw_image.size
             left = (rotated_image_size[0] - original_polygon_size[0])/2
             upper = (rotated_image_size[1] - original_polygon_size[1])/2
             right = original_polygon_size[0] + left
             lower = original_polygon_size[1] + upper
-            draw_image = draw_image.crop((left, upper, right, lower))
             while self._window.is_animating:
               time.sleep(self._window.conf_anim_dur / 2)
+            draw_image = draw_image.crop((left, upper, right, lower))
             self.PILBackgroundImage.paste(draw_image, (original_polygon_boundaries[0], original_polygon_boundaries[1]), draw_image)
 
         # prepare draw
@@ -705,7 +714,7 @@ class TextLayer():
 
           # calculate new line length
           if normalized_character_height != text_area[0]:
-            #print("normalized", text_area[0], normalized_character_height, text_area[1])
+            #print "normalized", text_area[0], normalized_character_height, text_area[1]
             for line in text_area[1]:
               # calculate some default values
               text = line[1]
@@ -747,16 +756,16 @@ class TextLayer():
               if text_area[2] == 'CODE':
                 is_code = True
               else:
-                is_codet = False
+                is_code = False
 
               is_emphasis = is_strong = False
-              words = text.replace('a href', 'a_href').replace(' ', u' ˇ').split(u'ˇ')
-              words_upper = text.replace(' ', u'ˇ').upper().split(u'ˇ')
+              words = text.replace('a href', 'a_href').replace(' ', ' ˇ').split('ˇ')
+              words_upper = text.replace(' ', 'ˇ').upper().split('ˇ')
               drawing_word = 0
               line_length = 0
 
               while drawing_word < len(words):
-                tag_split = words[drawing_word].replace('<', u'ˇ<').split(u'ˇ')
+                tag_split = words[drawing_word].replace('<', 'ˇ<').split('ˇ')
                 chunk_size = 0
 
                 for chunk in tag_split:
@@ -848,7 +857,10 @@ class TextLayer():
 
                   current_chunk = self.remove_xml_tags(chunk)
                   if current_chunk != '':
-                    chunk_size = chunk_size + draw.textsize(current_chunk, font=font)[0]
+                    try:
+                      chunk_size = chunk_size + draw.textlength(text=current_chunk, font=font)
+                    except:
+                      chunk_size = chunk_size + draw.textlength(text=current_chunk.encode(encoding='ascii',errors='replace'), font=font)
                 drawing_word = drawing_word + 1
                 line_length = line_length + chunk_size
               change_in_height = int(round((((line[2][1] - line[0][1]) - (current_character_height + 1)) / 2), 0))
@@ -866,9 +878,10 @@ class TextLayer():
               points.append((line[0][0], line[0][1]))
               points.append((line[2][0], line[2][1]))
             vertical_move =  int(((get_frame_span(polygon)[3] - get_frame_span(points)[3]) - (get_frame_span(points)[1] - get_frame_span(polygon)[1]))/2)
-            #print(get_frame_span(points), get_frame_span(polygon), vertical_move)
+            #print get_frame_span(points), get_frame_span(polygon), vertical_move
             #draw.rectangle((get_frame_span(polygon)[0], get_frame_span(polygon)[1], get_frame_span(polygon)[2], get_frame_span(polygon)[3]), outline="#FF0000")
             #draw.rectangle((get_frame_span(points)[0], get_frame_span(points)[1], get_frame_span(points)[2], get_frame_span(points)[3]), outline="#FFFF00")
+            #draw.polygon(polygon, outline="#000000")
 
             if vertical_move > 0:
               #check if inside
@@ -886,7 +899,7 @@ class TextLayer():
                   break
 
               if is_inside:
-                #print("move", vertical_move, lines[0])
+                #print "move", vertical_move, lines[0]
                 for idx, line in enumerate(lines):
                   #lines[idx] = ((line[0][0], line[0][1] + vertical_move), line[1], (line[2][0], line[2][1] + vertical_move))
                   #draw.rectangle((line[0][0], line[0][1] + vertical_move, line[2][0], line[2][1] + vertical_move), outline="#FFFFFF")
@@ -910,7 +923,7 @@ class TextLayer():
             is_commentary = True
           else:
             is_commentary = False
-            
+
           if text_area[2] == 'SIGN':
             is_sign = True
           else:
@@ -1033,7 +1046,7 @@ class TextLayer():
                 font_color = self._window.acbf_document.font_colors[text_area[2].lower()]
               elif not text_area[6]:
                 font_color = self._window.acbf_document.font_colors[text_area[2].lower()]
-                
+
               if '<EMPHASIS>' in chunk_upper:
                 font = e_font
                 font_small = e_font_small
@@ -1101,7 +1114,7 @@ class TextLayer():
               if old_line != line:
                 justify_space = 0
                 if is_commentary or (text_area[5].upper() == 'FORMAL' and idx + 1 == len(lines)): #left align
-                  space_between_words = draw.textsize(' ', font=font)[0]
+                  space_between_words = draw.textlength(' ', font=font)
                 elif text_area[5].upper() == 'FORMAL': #justify
                   w_count = len(line[1].strip().split(' ')) - 1
                   if is_last_line:
@@ -1110,16 +1123,16 @@ class TextLayer():
                     justify_space = (max_coordinate - line[2][0]) / w_count
                   else:
                     justify_space = 0
-                  space_between_words = draw.textsize(' ', font=font)[0] + justify_space
+                  space_between_words = draw.textlength(' ', font=font) + justify_space
                 else: #center
-                  space_between_words = draw.textsize('n n', font=font)[0] - draw.textsize('nn', font=font)[0]
+                  space_between_words = draw.textlength('n n', font=font) - draw.textlength('nn', font=font)
                   line_length = line[2][0] - line[0][0]
                   mid_bubble_x = ((get_frame_span(text_area[4])[0] + get_frame_span(text_area[4])[2]) / 2) - line_length / 2
                   max_coordinate_x = current_pointer[0] + int((max_coordinate - line[2][0])/2)
                   #draw.rectangle((get_frame_span(text_area[4])), outline="#FF0000")
                   #draw.rectangle((current_pointer[0], current_pointer[1], current_pointer[0] + line_length, current_pointer[1] + int(current_character_height)), outline="#FF0000")
                   #draw.rectangle((mid_bubble_x, current_pointer[1], mid_bubble_x + line_length, current_pointer[1] + int(current_character_height)), outline="#00FF00")
-                  #print(line, mid_bubble_x, line[0][0], max_coordinate - line_length, max_coordinate_x)
+                  #print line, mid_bubble_x, line[0][0], max_coordinate - line_length, max_coordinate_x
                   if text_area[3] != 0:
                     current_pointer = (max_coordinate_x, current_pointer[1])
                   elif mid_bubble_x >= line[0][0] and mid_bubble_x <= max_coordinate - line_length:
@@ -1142,34 +1155,34 @@ class TextLayer():
                   current_pointer = (current_pointer[0], current_pointer[1] - int(current_character_height * 0.7))
                 elif use_superscript:
                   draw.text(current_pointer, current_word, font=font_small, fill=font_color)
-                  #draw.rectangle((current_pointer[0] - 1, current_pointer[1] - 1, current_pointer[0] + draw.textsize(current_word, font=font_small)[0] + 1, current_pointer[1] + int(character_height * 0.7) + 1), outline=font_color)
+                  #draw.rectangle((current_pointer[0] - 1, current_pointer[1] - 1, current_pointer[0] + draw.textlength(current_word, font=font_small) + 1, current_pointer[1] + int(character_height * 0.7) + 1), outline=font_color)
                   if '<A_HREF' in chunk_upper:
                     reference_id = re.sub("[^#]*#", '', chunk)
                     reference_id = re.sub("\".*", '', reference_id)
-                    for idx, reference in enumerate(self.references):
+                    for idxr, reference in enumerate(self.references):
                       if reference_id == reference[0]:
-                        rectangle = [(current_pointer[0] - 1, current_pointer[1] - 1),
-                                     (current_pointer[0] + draw.textsize(current_word, font=font_small)[0] + 1, current_pointer[1] - 1),
-                                     (current_pointer[0] + draw.textsize(current_word, font=font_small)[0] + 1, current_pointer[1] + int(current_character_height * 0.7) + 1),
-                                     (current_pointer[0] - 1, current_pointer[1] + int(current_character_height * 0.7) + 1)]
-                        self.references[idx] = (reference[0], reference[1], rectangle)
+                        rectangle = [(current_pointer[0] - 5, current_pointer[1] - 5),
+                                     (current_pointer[0] + draw.textlength(current_word, font=font_small) + 5, current_pointer[1] - 5),
+                                     (current_pointer[0] + draw.textlength(current_word, font=font_small) + 5, current_pointer[1] + int(current_character_height * 0.7) + 5),
+                                     (current_pointer[0] - 5, current_pointer[1] + int(current_character_height * 0.7) + 5)]
+                        self.references[idxr] = (reference[0], reference[1], rectangle)
             
-                text_size = (draw.textsize(current_word, font=font_small)[0], int(current_character_height * 0.5))
+                text_size = (draw.textlength(current_word, font=font_small), int(current_character_height * 0.5))
                 strikethrough_rectangle = [current_pointer[0] - int(space_between_words/2),
                                            current_pointer[1] + int(current_character_height/2) + 1,
                                            current_pointer[0] + text_size[0] + int(space_between_words/2),
                                            current_pointer[1] + int(current_character_height/2) + 1 - int(current_character_height/10)]
-                
+
                 current_pointer = (current_pointer[0] + text_size[0], current_pointer[1])
-                
+
               else:
                 word_start = current_pointer
                 text_size = [0, current_character_height]
                 word_count = len(current_word.strip().split(' '))
-                line_length_total = draw.textsize(current_word.strip(), font=font)[0]
+                line_length_total = draw.textlength(current_word.strip(), font=font)
                 word_length_total = 0
                 for one_word in current_word.split(' '):
-                  word_length_total = word_length_total + draw.textsize(one_word.strip(), font=font)[0]
+                  word_length_total = word_length_total + draw.textlength(one_word.strip(), font=font)
 
                 space_length = line_length_total - word_length_total
                 if word_count > 1:
@@ -1177,9 +1190,9 @@ class TextLayer():
                 elif space_length > 0:
                   one_space = space_length
                 else:
-                  one_space = draw.textsize(current_word + ' M', font=font)[0] - draw.textsize(current_word + 'M', font=font)[0]
+                  one_space = draw.textlength(current_word + ' M', font=font) - draw.textlength(current_word + 'M', font=font)
 
-                #print('#' + current_word.encode('ascii', 'replace') + '#', line_length_total, word_length_total, space_length, one_space)
+                #print '#' + current_word.encode('ascii', 'ignore') + '#', line_length_total, word_length_total, space_length, one_space
                 
                 for one_word in current_word.split(' '):
                   if one_word == '':
@@ -1189,7 +1202,7 @@ class TextLayer():
                   elif font == e_font or font == s_font:
                     current_pointer = (current_pointer[0] - 1, current_pointer[1])
                   draw.text(current_pointer, one_word + ' ', font=font, fill=font_color)
-                  word_length = max(draw.textsize(one_word.strip(), font=font)[0] + one_space, draw.textsize(one_word.strip() + ' ', font=font)[0])
+                  word_length = max(draw.textlength(one_word.strip(), font=font) + one_space, draw.textlength(one_word.strip() + ' ', font=font))
                   if text_area[5].upper() == 'FORMAL':
                     word_length = word_length + justify_space
                   text_size = (text_size[0] + word_length, current_character_height)
@@ -1200,13 +1213,12 @@ class TextLayer():
                     current_pointer = (current_pointer[0] + 1, current_pointer[1])
 
                 #draw.text(current_pointer, current_word, font=font, fill=font_color)
-                #text_size = (draw.textsize(current_word, font=font)[0], current_character_height)
+                #text_size = (draw.textlength(current_word, font=font), current_character_height)
                 #current_pointer = (current_pointer[0] + text_size[0], current_pointer[1])
                 strikethrough_rectangle = [word_start[0] - int(space_between_words/2),
                                            word_start[1] + int(current_character_height/2) + 1,
                                            word_start[0] + line_length_total + int(space_between_words/2),
                                            word_start[1] + int(current_character_height/2) + 1 - int(current_character_height/10)]
-
 
               if strikethrough_word:
                 draw.rectangle(strikethrough_rectangle, outline=font_color, fill=font_color)
@@ -1215,7 +1227,7 @@ class TextLayer():
           while self._window.is_animating:
             time.sleep(self._window.conf_anim_dur / 2)
           if text_area[3] != 0:
-            draw_image = draw_image.rotate(text_area[3], Image.BILINEAR, 1)
+            draw_image = draw_image.rotate(text_area[3], Image.Resampling.BILINEAR, 1)
             rotated_image_size = draw_image.size
             left = (rotated_image_size[0] - original_polygon_size[0])/2
             upper = (rotated_image_size[1] - original_polygon_size[1])/2
