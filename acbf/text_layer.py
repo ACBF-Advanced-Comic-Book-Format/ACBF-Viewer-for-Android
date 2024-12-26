@@ -21,6 +21,8 @@ https://github.com/ACBF-Advanced-Comic-Book-Format
 
 
 from PIL import Image, ImageOps, ImageDraw, ImageFont, ImageEnhance, ImageChops
+if not hasattr(Image, 'Resampling'): # for older version of Pillow
+  Image.Resampling = Image
 from xml.sax.saxutils import unescape
 import math
 from io import StringIO

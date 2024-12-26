@@ -1429,7 +1429,55 @@ class SettingIconPath(SettingPath):
         else:
           self.textinput.path = '/'
 
+    def on_activity_result(self, request_code, result_code, intent):
+        if request_code != RESULT_LOAD_FILE:
+          print('user_select_image: ignoring activity result that was not RESULT_LOAD_FILE')
+          return
+        elif result_code == 0:
+          return
+
+        my_app = App.get_running_app().my_app
+        self.currentActivity.getContentResolver().takePersistableUriPermission(intent.getData(), Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        selectedFolder = intent.getData();  # Uri
+        print("selectedFolder:", selectedFolder.toString())
+        uri = cast('android.net.Uri', selectedFolder)
+        childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
+        documentfile = DocumentFile.fromTreeUri(self.currentActivity, childrenUri)
+        print("DocumentFiles:", documentfile.listFiles())
+
+        for f in documentfile.listFiles():
+          file_uri = f.getUri()
+          print(file_uri.toString())
+          opened_file = SharedStorage().copy_from_shared(file_uri)
+          print(opened_file)
+          print(os.listdir(self.cache_dir))
+          my_app.library.insert_new_book(opened_file, my_app.tempdir, file_uri.toString())
+          my_app.library.save_library()
+
+          if self.cache_dir and os.path.exists(self.cache_dir): shutil.rmtree(self.cache_dir)  # cleaning cache
+
+        my_app.total_books = len(my_app.library.tree.findall("book"))
+
+        # update comic library path in settings
+        App.get_running_app().config.set('general', 'lib_path', selectedFolder.toString())
+        App.get_running_app().config.write()
+        EventLoop.idle()
+        return
+
     def _create_popup(self, instance):
+        if platform == 'android':
+          self.currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
+          self.cache_dir = SharedStorage().get_cache_dir()
+          activity.bind(on_activity_result=self.on_activity_result)
+          intent = Intent()
+          intent.setAction(Intent.ACTION_OPEN_DOCUMENT_TREE)
+          intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+          intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+          #intent.addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+          self.currentActivity.startActivityForResult(intent, RESULT_LOAD_FILE)
+          EventLoop.idle()
+          return
+
         # create popup layout
         content = BoxLayout(orientation='vertical', spacing=5)
         popup_width = min(0.95 * Window.width, dp(500))
@@ -1566,8 +1614,6 @@ class ACBFaApp(App):
         self.tempdir =  str(os.path.join(self.tempdir_root, ''.join('tmp')))
         config.setdefaults('general', {
                            'lib_path': library_path,
-                           'lib_path_change': 0,
-                           'use_temp_dir': 0,
                            'temp_dir_path': self.tempdir,
                            'zoom_to_frame': 1,
                            'keep_screen_on': 0,
@@ -1600,7 +1646,7 @@ class ACBFaApp(App):
         
         config.setdefaults('image', {
                            'transition': 'Fade Out',
-                           'anim_dur': 0.4,
+                           'anim_dur': 0.5,
                            'resize_filter': 'Bilinear',
                            'normal_font': self.normal_font,
                            'strong_font': self.strong_font,
@@ -1616,71 +1662,11 @@ class ACBFaApp(App):
         settings.add_json_panel('Image', self.config, data=settingsjson.image_json)
         self.settings = settings
         
-    def user_select_folder(self, config):
-        currentActivity = cast('android.app.Activity', PythonActivity.mActivity)
-        cache_dir = SharedStorage().get_cache_dir()
-        
-        def on_activity_result(request_code, result_code, intent):
-          if request_code != RESULT_LOAD_FILE:
-            print('user_select_image: ignoring activity result that was not RESULT_LOAD_FILE')
-            return
-          elif result_code == 0:
-            return
-
-          currentActivity.getContentResolver().takePersistableUriPermission(intent.getData(), Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-          selectedFolder = intent.getData();  # Uri
-          print("selectedFolder:", selectedFolder.toString())
-          uri = cast('android.net.Uri', selectedFolder)
-          childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(uri, DocumentsContract.getTreeDocumentId(uri))
-          documentfile = DocumentFile.fromTreeUri(currentActivity, childrenUri)
-          print("DocumentFiles:", documentfile.listFiles())
-          
-          for f in documentfile.listFiles():
-            file_uri = f.getUri()
-            print(file_uri.toString())
-            opened_file = SharedStorage().copy_from_shared(file_uri)
-            print(opened_file)
-            print(os.listdir(cache_dir))
-            self.my_app.library.insert_new_book(opened_file, self.my_app.tempdir, file_uri.toString())
-            self.my_app.library.save_library()
-            
-            if cache_dir and os.path.exists(cache_dir): shutil.rmtree(cache_dir)  # cleaning cache
-          
-          self.my_app.total_books = len(self.my_app.library.tree.findall("book"))
-          
-          for child in self.settings.interface.children:
-            if str(type(child)) == "<class 'kivy.uix.tabbedpanel.TabbedPanel'>":
-              for child2 in child.children:
-                if str(type(child2)) == "<class 'kivy.uix.tabbedpanel.TabbedPanelContent'>":
-                  for child3 in child2.children:
-                    for child4 in child3.children:
-                      for child5 in child4.children:
-                        if str(type(child5)) == "<class 'kivy.uix.settings.SettingString'>":
-                          if child5.key == 'lib_path':
-                            child5.disabled = False
-                            child5.value = selectedFolder.toString()
-                            config.set('general', 'lib_path', selectedFolder.toString())
-                            child5.disabled = True
-                        if str(type(child5)) == "<class 'kivy.uix.settings.SettingBoolean'>":
-                          if child5.key == 'lib_path_change':
-                            config.set('general', 'lib_path_change', 0)
-          config.write()
-          return
-
-        activity.bind(on_activity_result=on_activity_result)
-        intent = Intent()
-        intent.setAction(Intent.ACTION_OPEN_DOCUMENT_TREE)
-        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-        #intent.addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
-        currentActivity.startActivityForResult(intent, RESULT_LOAD_FILE)
-
     def on_config_change(self, config, section, key, value):
         self.my_app.load_settings()
-        if key == 'lib_path_change':
-          self.user_select_folder(config)
         if key == 'lib_path':
           self.my_app.populate_library()
+          EventLoop.idle()
         if key == 'temp_dir_path':
           try:
             if not os.path.exists(os.path.join(value, 'tmp')):

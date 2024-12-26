@@ -33,14 +33,8 @@ if platform == 'android':
   manager = activity.getPackageManager()
   info = manager.getPackageInfo(activity.getPackageName(), 0);
   version = info.versionName
-  lib_path_type = 'string'
-  lib_path_disabled = True
-  lib_path_change_disabled = False
 else:
   version = '0'
-  lib_path_type = 'icon_path'
-  lib_path_disabled = False
-  lib_path_change_disabled = True
   print("Not running on Android ...")
 
 fonts_list = []
@@ -68,11 +62,6 @@ lib_json = json.dumps([
 'desc': 'Lock page when comic is zoomed out showing the whole page.',
 'section': 'general',
 'key': 'lock_page'},
-{'type': 'bool',
-'title': 'Use Custom Temporary Directory',
-'desc': 'Use Custom Temporary Directory to store temporary files (large comics may need more space than internal card can handle).',
-'section': 'general',
-'key': 'use_temp_dir'},
 {'type': 'icon_path',
 'title': 'Temporary Directory',
 'desc': 'Path where temporary files are stored.',
@@ -89,17 +78,10 @@ lib_json = json.dumps([
 
 {'type': 'title',
 'title': 'Library'},
-{'type': 'bool',
-'title': 'Change Library Folder',
-'desc': 'Change path to your comics folder.',
-'section': 'general',
-'disabled': lib_path_change_disabled,
-'key': 'lib_path_change'},
-{'type': lib_path_type,
+{'type': 'icon_path',
 'title': 'Comics Path',
 'desc': 'Path where comics are stored',
 'section': 'general',
-'disabled': lib_path_disabled,
 'key': 'lib_path'},
 {'type': 'scrolloptions',
 'title': 'Covers per Row',
@@ -118,7 +100,7 @@ lib_json = json.dumps([
 'key': 'version'},
 {'type': 'string',
 'title': 'Copyright',
-'desc': '(c) 2015-2024 Robert Kubik (https://github.com/GeoRW/ACBF).\n3DGlossy icons created by Aha-Soft (www.aha-soft.com), Creative Commons - Attribution 3.0 United States license.\nClean3D icons created by Mysitemyway.com, Creative Commons - Attribution 4.0 license.\nNuoveXT icons under GNU General Public License.\nRavenna3D icons by Double-J Design (http://www.doublejdesign.co.uk), Creative Common 3.0 Attribution license.',
+'desc': '(c) 2015-2024 Robert Kubik (https://github.com/ACBF-Advanced-Comic-Book-Format).\n3DGlossy icons created by Aha-Soft (www.aha-soft.com), Creative Commons - Attribution 3.0 United States license.\nClean3D icons created by Mysitemyway.com, Creative Commons - Attribution 4.0 license.\nNuoveXT icons under GNU General Public License.\nRavenna3D icons by Double-J Design (http://www.doublejdesign.co.uk), Creative Common 3.0 Attribution license.',
 'disabled': True,
 'section': 'general',
 'key': 'copyright'},
